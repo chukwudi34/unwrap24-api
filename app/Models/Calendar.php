@@ -19,6 +19,7 @@ class Calendar extends Model
         'title',
         'slug',
         'description',
+        'cover_image',
         'category_id',
         'template_id',
         'calendar_type',
@@ -28,10 +29,18 @@ class Calendar extends Model
         'timezone',
         'theme_config',
         'status',
+        'visibility',
+        'access_password',
         'require_lead_capture',
         'lead_capture_fields',
         'allow_social_sharing',
+        'allow_comments',
         'published_at',
+        'scheduled_at',
+    ];
+
+    protected $hidden = [
+        'access_password',
     ];
 
     protected function casts(): array
@@ -43,7 +52,10 @@ class Calendar extends Model
             'lead_capture_fields' => 'array',
             'require_lead_capture' => 'boolean',
             'allow_social_sharing' => 'boolean',
+            'allow_comments' => 'boolean',
+            'access_password' => 'hashed',
             'published_at' => 'datetime',
+            'scheduled_at' => 'datetime',
         ];
     }
 

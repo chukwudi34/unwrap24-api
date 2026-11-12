@@ -5,11 +5,11 @@
 | API Routes
 |--------------------------------------------------------------------------
 |
-| Phase 1 (Foundation): auth, email verification, password reset, Google
-| OAuth handoff, and dashboard stats. Calendar CRUD and other Phase 2+
-| endpoints are intentionally not implemented yet.
+| Auth, email verification, password reset, Google OAuth handoff,
+| dashboard stats, and calendar creation/listing.
 |
 */
 
 require __DIR__.'/api/auth.php';
 require __DIR__.'/api/dashboard.php';
+require __DIR__.'/api/calendars.php';

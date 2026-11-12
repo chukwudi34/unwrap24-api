@@ -8,10 +8,6 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * @mixin Calendar
- *
- * Phase 1 note: no calendar CRUD endpoints exist yet. This resource is
- * scaffolded now so Phase 2 controllers have a ready-made, ID-safe shape
- * to return.
  */
 class CalendarResource extends JsonResource
 {
@@ -25,6 +21,7 @@ class CalendarResource extends JsonResource
             'slug' => $this->slug,
             'title' => $this->title,
             'description' => $this->description,
+            'cover_image' => $this->cover_image,
             'calendar_type' => $this->calendar_type,
             'day_count' => $this->day_count,
             'start_date' => $this->start_date,
@@ -32,12 +29,17 @@ class CalendarResource extends JsonResource
             'timezone' => $this->timezone,
             'theme_config' => $this->theme_config,
             'status' => $this->status,
+            'visibility' => $this->visibility,
+            'require_lead_capture' => $this->require_lead_capture,
             'allow_social_sharing' => $this->allow_social_sharing,
+            'allow_comments' => $this->allow_comments,
             'published_at' => $this->published_at,
+            'scheduled_at' => $this->scheduled_at,
             'category' => $this->whenLoaded('category', fn () => [
                 'name' => $this->category->name,
                 'slug' => $this->category->slug,
             ]),
+            'days' => CalendarDayResource::collection($this->whenLoaded('days')),
             'created_at' => $this->created_at,
         ];
     }

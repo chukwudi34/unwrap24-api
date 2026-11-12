@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AnalyticsEvent;
 use App\Models\Calendar;
 use App\Models\CalendarOpening;
 use App\Models\CalendarVisit;
@@ -39,19 +40,27 @@ class DashboardStatsController extends Controller
             ->where('status', 'draft')
             ->count();
 
-        $totalVisitors = CalendarVisit::whereIn('calendar_id', $calendarIds)
+        $totalVisits = CalendarVisit::whereIn('calendar_id', $calendarIds)->count();
+
+        $uniqueVisitors = CalendarVisit::whereIn('calendar_id', $calendarIds)
             ->distinct('visitor_hash')
             ->count('visitor_hash');
 
         $totalDoorOpenings = CalendarOpening::whereIn('calendar_id', $calendarIds)->count();
+
+        $totalShares = AnalyticsEvent::whereIn('calendar_id', $calendarIds)
+            ->where('event_type', 'share')
+            ->count();
 
         return response()->json([
             'data' => [
                 'total_calendars' => $totalCalendars,
                 'published_calendars' => $publishedCalendars,
                 'draft_calendars' => $draftCalendars,
-                'total_visitors' => $totalVisitors,
+                'total_visits' => $totalVisits,
+                'unique_visitors' => $uniqueVisitors,
                 'total_door_openings' => $totalDoorOpenings,
+                'total_shares' => $totalShares,
                 // Real activity feed is deferred to Phase 2+.
                 'recent_activity' => [],
             ],
