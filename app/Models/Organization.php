@@ -60,6 +60,14 @@ class Organization extends Model
         return $this->hasMany(Subscription::class);
     }
 
+    public function activeSubscription(): ?Subscription
+    {
+        return $this->subscriptions()
+            ->whereIn('status', ['active', 'trialing'])
+            ->latest()
+            ->first();
+    }
+
     public function customDomains(): HasMany
     {
         return $this->hasMany(CustomDomain::class);

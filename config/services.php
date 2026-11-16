@@ -41,6 +41,20 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI'),
     ],
 
+    'stripe' => [
+        'secret' => env('STRIPE_SECRET_KEY'),
+        'publishable' => env('STRIPE_PUBLISHABLE_KEY'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    ],
+
+    // Not wired up yet -- the `payments.provider` / `subscriptions.provider`
+    // enums already include 'paystack' so this can slot in without a schema
+    // change once implemented.
+    'paystack' => [
+        'secret' => env('PAYSTACK_SECRET_KEY'),
+        'public' => env('PAYSTACK_PUBLIC_KEY'),
+    ],
+
     'frontend_url' => env('FRONTEND_URL', 'http://localhost:3000'),
 
 ];

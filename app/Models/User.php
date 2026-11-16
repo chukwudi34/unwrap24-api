@@ -8,6 +8,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -30,6 +31,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
         'role',
         'avatar_path',
         'google_id',
+        'stripe_customer_id',
     ];
 
     /**
@@ -94,9 +96,33 @@ class User extends Authenticatable implements MustVerifyEmailContract
         return $this->hasMany(Subscription::class);
     }
 
+    /**
+     * The user's own active/trialing subscription (organization-owned
+     * subscriptions, e.g. for the Business plan, live on Organization
+     * instead -- see Organization::activeSubscription()).
+     */
+    public function activeSubscription(): ?Subscription
+    {
+        return $this->subscriptions()
+            ->whereNull('organization_id')
+            ->whereIn('status', ['active', 'trialing'])
+            ->latest()
+            ->first();
+    }
+
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * The one in-progress "create calendar" draft this user is working on,
+     * if any -- persisted server-side so it's scoped to this account rather
+     * than to whichever browser happens to be signed in.
+     */
+    public function calendarDraft(): HasOne
+    {
+        return $this->hasOne(CalendarDraft::class);
     }
 
     public function reports(): HasMany

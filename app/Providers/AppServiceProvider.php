@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Billing\PaymentGatewayFactory;
 use App\Models\Calendar;
 use App\Policies\CalendarPolicy;
 use Illuminate\Support\Facades\Gate;
@@ -14,7 +15,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(PaymentGatewayFactory::class);
     }
 
     /**
