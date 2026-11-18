@@ -24,7 +24,11 @@ return [
     | may even configure multiple disks for the same driver. Examples for
     | most supported storage drivers are configured here for reference.
     |
-    | Supported drivers: "local", "ftp", "sftp", "s3"
+    | Supported drivers: "local", "ftp", "sftp", "s3", "gcs"
+    |
+    | The "gcs" driver is registered in AppServiceProvider and is used on
+    | Google Cloud Run (Cloud Storage) while local development keeps using
+    | the "local" disk by default.
     |
     */
 
@@ -43,6 +47,16 @@ return [
             'root' => storage_path('app/public'),
             'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
+            'throw' => false,
+            'report' => false,
+        ],
+
+        'gcs' => [
+            'driver' => 'gcs',
+            'project_id' => env('GOOGLE_CLOUD_PROJECT_ID', env('GOOGLE_CLOUD_PROJECT')),
+            'bucket' => env('GOOGLE_CLOUD_STORAGE_BUCKET'),
+            'path_prefix' => env('GOOGLE_CLOUD_STORAGE_PATH_PREFIX', ''),
+            'key_file_path' => env('GOOGLE_CLOUD_KEY_FILE'),
             'throw' => false,
             'report' => false,
         ],

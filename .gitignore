@@ -26,3 +26,22 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Terraform — state and variable files contain infrastructure secrets
+/terraform/.terraform/
+/terraform/.terraform.tfstate.lock.info
+/terraform/*.tfstate
+/terraform/*.tfstate.*
+/terraform/*.tfvars
+/terraform/*.tfvars.json
+/terraform/*.tfplan
+/terraform/crash.log
+/terraform/crash.*.log
+/terraform/.env
+
+# Google Cloud credentials — never commit service account keys
+*-sa-key.json
+*-service-account.json
+service-account*.json
+gcp-credentials*.json
+application_default_credentials.json

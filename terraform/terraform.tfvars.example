@@ -1,0 +1,34 @@
+# Copy to terraform.tfvars (git-ignored) and fill in your own values.
+# Never commit this file with real credentials.
+
+project_id    = "your-gcp-project-id"
+region        = "us-central1"
+environment   = "production"
+service_name  = "unwrap24-api"
+frontend_url  = "https://unwrap24.com"
+
+# Leave empty to derive https://<service>-<project-number>.<region>.run.app
+app_url = ""
+
+# Cloud SQL
+db_instance_name = "unwrap24-mysql"
+db_name          = "unwrap24"
+db_user          = "unwrap24"
+db_tier          = "db-f1-micro"
+
+# Cloud Storage (leave empty for <project>-<app>-<env>-media)
+media_bucket_name = ""
+
+# Application settings
+# laravel_app_key = "base64:..."   # empty => generated and stored in Secret Manager
+google_client_id  = ""
+google_client_secret = ""
+stripe_publishable_key = ""
+stripe_secret_key      = ""
+stripe_webhook_secret  = ""
+
+# Cloud Run sizing
+min_instance_count = 0
+max_instance_count = 10
+container_cpu      = "1"
+container_memory   = "512Mi"
