@@ -40,6 +40,12 @@ class CalendarResource extends JsonResource
                 'slug' => $this->category->slug,
             ]),
             'days' => CalendarDayResource::collection($this->whenLoaded('days')),
+            // Engagement counts -- present only when the endpoint loaded
+            // them with withCount() (the dashboard's calendar list does).
+            'visits_count' => $this->when(isset($this->resource->visits_count), fn () => (int) $this->resource->visits_count),
+            'door_openings_count' => $this->when(isset($this->resource->door_openings_count), fn () => (int) $this->resource->door_openings_count),
+            'participants_count' => $this->when(isset($this->resource->participants_count), fn () => (int) $this->resource->participants_count),
+            'shares_count' => $this->when(isset($this->resource->shares_count), fn () => (int) $this->resource->shares_count),
             'created_at' => $this->created_at,
         ];
     }

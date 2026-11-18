@@ -14,6 +14,7 @@
 require __DIR__.'/api/auth.php';
 require __DIR__.'/api/dashboard.php';
 require __DIR__.'/api/calendars.php';
+require __DIR__.'/api/public.php';
 require __DIR__.'/api/plans.php';
 require __DIR__.'/api/organizations.php';
 require __DIR__.'/api/billing.php';

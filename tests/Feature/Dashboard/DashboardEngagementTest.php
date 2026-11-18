@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Dashboard;
 
+use App\Models\AnalyticsEvent;
 use App\Models\Calendar;
 use App\Models\CalendarOpening;
 use App\Models\CalendarVisit;
@@ -23,7 +24,7 @@ class DashboardEngagementTest extends TestCase
         $response->assertStatus(200);
         $this->assertCount(7, $response->json('data'));
         $this->assertSame(
-            ['date', 'visits', 'openings', 'subscribers'],
+            ['date', 'visits', 'openings', 'subscribers', 'unique_visitors', 'shares'],
             array_keys($response->json('data.0')),
         );
     }
@@ -68,6 +69,7 @@ class DashboardEngagementTest extends TestCase
         CalendarVisit::create(['calendar_id' => $calendar->id, 'visitor_hash' => 'v2']);
         CalendarOpening::create(['calendar_id' => $calendar->id, 'calendar_day_id' => $day->id, 'visitor_hash' => 'v1', 'opened_at' => now()]);
         Lead::create(['calendar_id' => $calendar->id, 'email' => 'fan@example.com']);
+        AnalyticsEvent::create(['calendar_id' => $calendar->id, 'event_type' => 'share']);
 
         // Other user's activity must never leak into this response.
         CalendarVisit::create(['calendar_id' => $othersCalendar->id, 'visitor_hash' => 'v3']);
@@ -80,5 +82,7 @@ class DashboardEngagementTest extends TestCase
         $this->assertSame(2, $today['visits']);
         $this->assertSame(1, $today['openings']);
         $this->assertSame(1, $today['subscribers']);
+        $this->assertSame(2, $today['unique_visitors']);
+        $this->assertSame(1, $today['shares']);
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AnalyticsEvent;
 use App\Models\Calendar;
 use App\Models\CalendarOpening;
 use App\Models\CalendarVisit;
@@ -15,11 +16,12 @@ use Illuminate\Http\Request;
 class DashboardEngagementController extends Controller
 {
     /**
-     * Daily engagement series (visits, door openings, new email
-     * subscribers) for the authenticated user's calendars, over the last
-     * N days (default/clamped to 1-90). Every day in the range is present
-     * in the response, even when its count is zero, so the frontend can
-     * plot a continuous line without gap-filling itself.
+     * Daily engagement series (visits, unique visitors, door openings,
+     * shares, new email subscribers) for the authenticated user's
+     * calendars, over the last N days (default/clamped to 1-90). Every
+     * day in the range is present in the response, even when its count
+     * is zero, so the frontend can plot a continuous line without
+     * gap-filling itself.
      */
     public function __invoke(Request $request): JsonResponse
     {
@@ -41,6 +43,13 @@ class DashboardEngagementController extends Controller
         $visitsByDay = $this->dailyCounts(CalendarVisit::whereIn('calendar_id', $calendarIds), 'created_at', $start, $end);
         $openingsByDay = $this->dailyCounts(CalendarOpening::whereIn('calendar_id', $calendarIds), 'opened_at', $start, $end);
         $subscribersByDay = $this->dailyCounts(Lead::whereIn('calendar_id', $calendarIds), 'created_at', $start, $end);
+        $sharesByDay = $this->dailyCounts(
+            AnalyticsEvent::whereIn('calendar_id', $calendarIds)->where('event_type', 'share'),
+            'created_at',
+            $start,
+            $end
+        );
+        $uniqueByDay = $this->dailyUniqueCounts(CalendarVisit::whereIn('calendar_id', $calendarIds), 'visitor_hash', 'created_at', $start, $end);
 
         $series = [];
         for ($cursor = $start; $cursor <= $end; $cursor = $cursor->addDay()) {
@@ -50,6 +59,8 @@ class DashboardEngagementController extends Controller
                 'visits' => $visitsByDay[$day] ?? 0,
                 'openings' => $openingsByDay[$day] ?? 0,
                 'subscribers' => $subscribersByDay[$day] ?? 0,
+                'unique_visitors' => $uniqueByDay[$day] ?? 0,
+                'shares' => $sharesByDay[$day] ?? 0,
             ];
         }
 
@@ -63,6 +74,20 @@ class DashboardEngagementController extends Controller
     {
         return $query->whereBetween($column, [$start, $end])
             ->selectRaw("DATE({$column}) as day, COUNT(*) as total")
+            ->groupBy('day')
+            ->pluck('total', 'day')
+            ->toArray();
+    }
+
+    /**
+     * Distinct values per day (e.g. unique visitor hashes).
+     *
+     * @return array<string, int> Keyed by Y-m-d.
+     */
+    private function dailyUniqueCounts(Builder $query, string $distinctColumn, string $column, CarbonImmutable $start, CarbonImmutable $end): array
+    {
+        return $query->whereBetween($column, [$start, $end])
+            ->selectRaw("DATE({$column}) as day, COUNT(DISTINCT {$distinctColumn}) as total")
             ->groupBy('day')
             ->pluck('total', 'day')
             ->toArray();

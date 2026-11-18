@@ -29,6 +29,12 @@ class CalendarController extends Controller
                 $query->orWhereIn('organization_id', $organizationIds);
             })
             ->with('category')
+            ->withCount([
+                'visits',
+                'openings as door_openings_count',
+                'leads as participants_count',
+                'analyticsEvents as shares_count' => fn ($query) => $query->where('event_type', 'share'),
+            ])
             ->latest()
             ->paginate(20);
 
