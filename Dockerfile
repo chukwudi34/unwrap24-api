@@ -75,7 +75,11 @@ WORKDIR /var/www/html
 
 COPY --from=vendor /app /var/www/html
 
-RUN mkdir -p \
+# The host's package/config caches reference dev-only packages (e.g. Laravel
+# Boost) that are not installed in the production image. Regenerate them at
+# runtime, after Cloud Run injects its configuration.
+RUN rm -f bootstrap/cache/*.php \
+    && mkdir -p \
         bootstrap/cache \
         storage/app/private \
         storage/app/public \

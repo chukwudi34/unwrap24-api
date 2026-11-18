@@ -263,3 +263,103 @@ access to protected routes.
 `http://localhost:3000`) on `api/*` and `sanctum/csrf-cookie`, with
 `supports_credentials` true and `Authorization` exposed, for the Next.js
 frontend.
+
+## Google Cloud Platform deployment
+
+The API ships as a PHP 8.3 / nginx container intended for **Google Cloud Run**,
+with all supporting infrastructure defined in Terraform under
+[`terraform/`](terraform/README.md). Application behaviour is unchanged: local
+development still uses the `local` filesystem disk and its own MySQL connection.
+
+### Architecture
+
+```
+                       ┌────────────────────────────────────────┐
+  Next.js frontend ───▶│ Cloud Run · unwrap24-api               │
+  (HTTPS, Sanctum      │ PHP 8.3 FPM + nginx, port $PORT        │
+   bearer tokens)      │ dedicated service account, scale 0→10  │
+                       └──┬──────────────┬──────────────┬───────┘
+                          │              │              │
+        Cloud SQL socket  │              │ Secret refs  │ ADC (metadata server)
+        /cloudsql/...     │              │              │
+                          ▼              ▼              ▼
+                 ┌────────────────┐ ┌──────────────┐ ┌─────────────────────┐
+                 │ Cloud SQL      │ │ Secret       │ │ Cloud Storage       │
+                 │ MySQL 8.0      │ │ Manager      │ │ calendar media      │
+                 │ TLS required   │ │ 5 secrets    │ │ (Laravel gcs disk)  │
+                 └────────────────┘ └──────────────┘ └─────────────────────┘
+                          │
+                          ▼
+                 ┌────────────────┐        Images: Artifact Registry ──▶ Cloud Run
+                 │ Cloud Logging  │◀── stdout/stderr (LOG_CHANNEL=stderr)
+                 │ dedicated sink │
+                 └────────────────┘
+```
+
+### GCP services
+
+| Service | Purpose in Unwrap24 |
+|---|---|
+| **Cloud Run** (`unwrap24-api`) | Runs the container, terminates TLS, probes `/up`, injects env vars and secret references, scales 0→10 |
+| **Artifact Registry** (`unwrap24`) | Stores the API Docker images; last 10 versions kept |
+| **Cloud SQL for MySQL** (`unwrap24-mysql`) | Primary database (`unwrap24`), reached over the Cloud SQL Unix socket, TLS-only, automated backups |
+| **Cloud Storage** (`<project>-unwrap24-production-media`) | Calendar media through Laravel's `gcs` filesystem disk; uniform access, public access prevention |
+| **Secret Manager** | `APP_KEY`, DB password, Google OAuth client secret, Stripe secret key and webhook secret; referenced by Cloud Run, never baked into the image |
+| **Service account** (`unwrap24-run`) | Dedicated runtime identity, no keys, least-privilege IAM |
+| **Cloud Logging** | Laravel logs to stderr; a sink routes Cloud Run revisions to a dedicated, 30-day bucket |
+| **IAM** | `cloudsql.client`, `logging.logWriter`, `monitoring.metricWriter` at project level; repository reader, bucket `objectAdmin` and per-secret `secretAccessor` scoped to the resources used |
+
+### Container image
+
+The root [`Dockerfile`](Dockerfile) is a multi-stage build:
+
+- **vendor stage** — `composer install --no-dev` and an authoritative
+  optimized autoloader.
+- **runtime stage** — `php:8.3-fpm-alpine` with nginx, supervisor, bcmath, exif,
+  gd, intl, opcache, pcntl, pdo_mysql and zip; nginx listens on `${PORT}`
+  (rendered by `docker/entrypoint.sh`), PHP-FPM stays on loopback, and
+  `php artisan config:cache` runs after Cloud Run injects its configuration.
+- No `.env`, credentials or Terraform state are copied into the image
+  (see [`.dockerignore`](.dockerignore)); configuration arrives at runtime from
+  Cloud Run environment variables and Secret Manager references.
+
+### Deployment workflow
+
+1. `cd terraform && terraform init` with a `terraform.tfvars` (see
+   `terraform/terraform.tfvars.example`).
+2. Bootstrap APIs and Artifact Registry:
+   `terraform apply -target=google_project_service.apis -target=google_artifact_registry_repository.docker`.
+3. Build and push the image to
+   `<region>-docker.pkg.dev/<project>/unwrap24/unwrap24-api:<tag>`.
+4. `terraform apply -var="image_tag=<tag>"` creates Cloud SQL, Storage,
+   secrets, IAM, logging and the Cloud Run revision.
+5. Run `php artisan migrate --force` through the Cloud SQL Auth Proxy or a
+   one-off Cloud Run job, then register
+   `https://<service-url>/api/auth/google/callback` in the Google OAuth client.
+
+Full commands, destruction steps and cost notes live in
+[`terraform/README.md`](terraform/README.md).
+
+### Local validation evidence
+
+| Check | Command | Result |
+|---|---|---|
+| Terraform formatting | `terraform fmt -recursive` / `terraform fmt -check -recursive` | clean |
+| Terraform init | `terraform init -backend=false` | initialized (`hashicorp/google`, `hashicorp/random`) |
+| Terraform validation | `terraform validate` | `Success! The configuration is valid.` |
+| Docker image | `docker build -t unwrap24-api:local .` | built successfully (multi-stage, PHP 8.3) |
+| Container boot | `docker run -e PORT=9090 -p 9090:9090 unwrap24-api:local` | supervisord starts nginx + php-fpm, nginx listens on `PORT` |
+| Health endpoint | `curl http://127.0.0.1:9090/up` | `200` |
+| API routing/auth | `curl -H 'Accept: application/json' /api/auth/user` | `401 {"message":"Unauthenticated."}` |
+| Image contents | inspect `/var/www/html` | `.env.example` only, no `.env`, no dev packages |
+| Application tests | `php artisan test --compact` | 60 tests / 230 assertions passing |
+| Code style | `vendor/bin/pint --dirty --format agent` | passed |
+
+**What this does and does not prove:** the Terraform above was validated with
+`terraform fmt`, `terraform init -backend=false` and `terraform validate`, which
+checks syntax, types, provider schema and internal references. It was **not**
+`terraform plan`ned against a live project and **not** applied — no Google Cloud
+resources (Cloud Run service, Cloud SQL instance, bucket, secrets, IAM) have been
+created, and the API has **not** been deployed to GCP. The Docker image was
+built locally; pushing and running it on Cloud Run remains part of the
+deployment workflow above.
